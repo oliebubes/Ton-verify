@@ -1,0 +1,16 @@
+{
+  "name": "betcrypto-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BETCRYPTO backend - single file API",
+  "type": "module",
+  "main": "server.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node server.js migrate",
+    "selftest": "node server.js selftest",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": { "nodemailer": "^6.9.0", "pg": "^8.11.0" }
+}
