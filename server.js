@@ -1699,7 +1699,9 @@ async function main() {
   if (cmd === 'migrate') { const cfg = loadConfig(process.env, { strict: false }); if (!cfg.databaseUrl) throw new Error('Set DATABASE_URL first'); const s = await createPgStore(cfg.databaseUrl); console.log('Applied:', (await runMigrations(s)).join(', ') || 'nothing new (already up to date)'); return s.close(); }
   const { app, cfg } = await bootstrap();
   const server = http.createServer(app.handler);
-  server.listen(cfg.port, () => console.log(`BETCRYPTO backend listening on port ${cfg.port}`));
+  server.listen(cfg.port, '0.0.0.0', () => {
+  console.log(`BETCRYPTO backend listening on port ${cfg.port}`);
+});
   if (cfg.enableScheduler) {
     const run = (name, fn) => setInterval(() => fn().then((r) => { if (r && (r.due || r.checked)) console.log(`[job:${name}]`, JSON.stringify(r)); }).catch((e) => console.log(`[job:${name}] failed`, e.message)), 5 * 60 * 1000);
     run('settle', () => settleDueBets(app.ctx)); run('reconcile', () => reconcileDeposits(app.ctx));
@@ -1707,7 +1709,7 @@ async function main() {
     console.log('Built-in scheduler is ON: bet settlement and deposit re-checks run every 5 minutes.');
   }
 }
-// Hosting on Vercel: this file can be used as the function (export default).
+// Hosting on Hostless: this file can be used as the function (export default).
 let _boot;
 export default async function vercelHandler(req, res) { _boot = _boot || bootstrap(); const { app } = await _boot; return app.handler(req, res); }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((e) => { console.error(e.message); process.exit(1); });
