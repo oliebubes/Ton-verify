@@ -1636,6 +1636,11 @@ export async function maintenance(ctx) {
 export async function bootstrap(env = process.env) {
   const cfg = loadConfig(env);
   const store = await createPgStore(cfg.databaseUrl);
+  // Create any missing tables at start-up. Safe to run every time: it only adds what is missing.
+  try {
+    const applied = await runMigrations(store);
+    if (applied.length) console.log('Database tables created:', applied.join(', '));
+  } catch (e) { console.log('Database setup failed:', e.message); throw e; }
   const app = createApp({ store, cfg, mailer: createMailer(cfg) });
   return { app, store, cfg };
 }
