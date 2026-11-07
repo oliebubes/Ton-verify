@@ -23,7 +23,8 @@ export function loadConfig(env = process.env, { strict = true } = {}) {
     databaseUrl: env.DATABASE_URL || '',
     allowedOrigins: String(env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean),
     botToken: env.TELEGRAM_BOT_TOKEN || '',
-    botUsername: env.TELEGRAM_BOT_USERNAME || 'Betcryptoassetbot',
+    botUsername: String(env.TELEGRAM_BOT_USERNAME || '').replace(/^@/, '').trim(),
+    adminBotToken: env.ADMIN_BOT_TOKEN || '',
     codePepper: env.CODE_PEPPER || '',
     emailMode: env.EMAIL_MODE || 'smtp',
     smtp: { host: env.SMTP_HOST || 'smtp.gmail.com', port: num(env.SMTP_PORT, 465), user: env.SMTP_USER || '', pass: env.SMTP_PASS || '', fromName: env.EMAIL_FROM_NAME || 'BETCRYPTO' },
@@ -731,7 +732,8 @@ export async function referralInfo(ctx, user) {
   const list = await ctx.store.list('referrals', { inviter_id: user.id }, { order: 'id DESC', limit: 100 });
   const items = [];
   for (const r of list) { const inv = await ctx.store.get('users', { id: r.invitee_id }); items.push({ id: r.id, label: inv && inv.username ? inv.username : inv ? inv.public_id : '', status: r.status === 'qualified' ? 'completed' : 'pending', reward: r.reward_amount ? fmt(dec(r.reward_amount)) : null, createdAt: r.created_at }); }
-  return { link: ctx.cfg.referralBaseUrl ? `${ctx.cfg.referralBaseUrl}/?ref=${code}` : null, code, qualifyingCount: list.filter((r) => r.status === 'qualified').length, items };
+  const link = ctx.cfg.referralBaseUrl ? `${ctx.cfg.referralBaseUrl}/?ref=${code}` : (ctx.cfg.botUsername ? `https://t.me/${ctx.cfg.botUsername}?start=${code}` : null);
+  return { link, code, qualifyingCount: list.filter((r) => r.status === 'qualified').length, items };
 }
 export const qualifyingCount = (ctx, userId) => ctx.store.count('referrals', { inviter_id: userId, status: 'qualified' });
 
@@ -1325,7 +1327,7 @@ export function translateFromFile(ctx, { target, strings }) {
 const ADMIN_PRE_MIN = 15;
 export async function adminAuthTelegram(ctx, { initData, ip }) {
   await limit(ctx, ['adminauth', ip], 600, 20);
-  const t = verifyInitData(initData, ctx.cfg.botToken, { maxAgeSec: 3600, nowSec: Math.floor(ctx.now().getTime() / 1000) });
+  const t = verifyInitData(initData, ctx.cfg.adminBotToken || ctx.cfg.botToken, { maxAgeSec: 3600, nowSec: Math.floor(ctx.now().getTime() / 1000) });
   if (!ctx.cfg.adminTelegramIds.includes(t.tgId)) { await audit(ctx, { action: 'admin_login_denied', details: { tg: t.tgId } }); throw new AppError(403, 'NOT_ADMIN'); }
   let a = await ctx.store.get('admins', { tg_id: t.tgId });
   if (!a) a = await ctx.store.insert('admins', { tg_id: t.tgId, label: t.username });
